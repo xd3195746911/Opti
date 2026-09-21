@@ -1,56 +1,110 @@
---// AGGRESSIVE ANIMATION OPTIMIZER
---// Para tu propio juego - Roblox Studio
---// No botones ni configuración manual
+--// EXTREME PERFORMANCE MODE
+--// Para tu propio juego en Roblox Studio
 
-local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local CollectionService = game:GetService("CollectionService")
 
-local LocalPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 
-local function optimizeAnimations(obj)
-    if not obj:IsA("Model") then
-        return
+--==================================================
+-- 1. ILUMINACIÓN
+--==================================================
+
+pcall(function()
+    Lighting.GlobalShadows = false
+    Lighting.EnvironmentDiffuseScale = 0
+    Lighting.EnvironmentSpecularScale = 0
+
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        if effect:IsA("PostEffect") then
+            effect.Enabled = false
+        end
     end
+end)
 
-    -- No tocar al jugador local
-    if LocalPlayer and obj == LocalPlayer.Character then
-        return
-    end
+--==================================================
+-- 2. EFECTOS PESADOS
+--==================================================
 
-    -- Buscar animadores dentro del modelo
-    for _, descendant in ipairs(obj:GetDescendants()) do
-        if descendant:IsA("Animator") then
+local function optimizeObject(obj)
+    pcall(function()
 
-            -- Detener animaciones que no sean esenciales
-            for _, track in ipairs(descendant:GetPlayingAnimationTracks()) do
-                pcall(function()
-                    track:Stop(0)
-                end)
+        if obj:IsA("ParticleEmitter") then
+            obj.Enabled = false
+            obj.Rate = 0
+
+        elseif obj:IsA("Trail")
+            or obj:IsA("Beam")
+            or obj:IsA("Smoke")
+            or obj:IsA("Fire")
+            or obj:IsA("Sparkles") then
+
+            obj.Enabled = false
+        end
+
+    end)
+end
+
+for _, obj in ipairs(workspace:GetDescendants()) do
+    optimizeObject(obj)
+end
+
+workspace.DescendantAdded:Connect(function(obj)
+    task.defer(optimizeObject, obj)
+end)
+
+--==================================================
+-- 3. OBJETOS MARCADOS COMO PRESCINDIBLES
+--==================================================
+-- En Studio puedes poner la etiqueta
+-- "LowPriorityVisual" a decoraciones que quieras
+-- ocultar durante el modo rendimiento.
+
+local function hideLowPriority()
+    for _, obj in ipairs(
+        CollectionService:GetTagged("LowPriorityVisual")
+    ) do
+        if obj:IsA("BasePart") then
+            obj.LocalTransparencyModifier = 1
+        elseif obj:IsA("Model") then
+            for _, part in ipairs(obj:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.LocalTransparencyModifier = 1
+                end
             end
-
-        elseif descendant:IsA("ParticleEmitter") then
-            descendant.Enabled = false
-            descendant.Rate = 0
-
-        elseif descendant:IsA("Trail")
-            or descendant:IsA("Beam")
-            or descendant:IsA("Smoke")
-            or descendant:IsA("Fire")
-            or descendant:IsA("Sparkles") then
-
-            descendant.Enabled = false
         end
     end
 end
 
--- Optimizar modelos existentes
-for _, obj in ipairs(Workspace:GetChildren()) do
-    optimizeAnimations(obj)
+hideLowPriority()
+
+--==================================================
+-- 4. CONGELAR ANIMACIONES SECUNDARIAS
+--==================================================
+
+local function optimizeAnimator(animator)
+    if not animator:IsA("Animator") then
+        return
+    end
+
+    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+        -- No tocar al personaje del jugador
+        local character = player.Character
+        if character and animator:IsDescendantOf(character) then
+            continue
+        end
+
+        pcall(function()
+            track:AdjustSpeed(0)
+        end)
+    end
 end
 
--- Optimizar modelos que aparezcan posteriormente
-Workspace.ChildAdded:Connect(function(obj)
-    task.defer(optimizeAnimations, obj)
-end)
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("Animator") then
+        optimizeAnimator(obj)
+    end
+end
 
-print("⚡ Aggressive Animation Optimizer activado")
+print("⚡ EXTREME PERFORMANCE MODE ACTIVADO")
