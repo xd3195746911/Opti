@@ -1,0 +1,56 @@
+--// AGGRESSIVE ANIMATION OPTIMIZER
+--// Para tu propio juego - Roblox Studio
+--// No botones ni configuración manual
+
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+
+local function optimizeAnimations(obj)
+    if not obj:IsA("Model") then
+        return
+    end
+
+    -- No tocar al jugador local
+    if LocalPlayer and obj == LocalPlayer.Character then
+        return
+    end
+
+    -- Buscar animadores dentro del modelo
+    for _, descendant in ipairs(obj:GetDescendants()) do
+        if descendant:IsA("Animator") then
+
+            -- Detener animaciones que no sean esenciales
+            for _, track in ipairs(descendant:GetPlayingAnimationTracks()) do
+                pcall(function()
+                    track:Stop(0)
+                end)
+            end
+
+        elseif descendant:IsA("ParticleEmitter") then
+            descendant.Enabled = false
+            descendant.Rate = 0
+
+        elseif descendant:IsA("Trail")
+            or descendant:IsA("Beam")
+            or descendant:IsA("Smoke")
+            or descendant:IsA("Fire")
+            or descendant:IsA("Sparkles") then
+
+            descendant.Enabled = false
+        end
+    end
+end
+
+-- Optimizar modelos existentes
+for _, obj in ipairs(Workspace:GetChildren()) do
+    optimizeAnimations(obj)
+end
+
+-- Optimizar modelos que aparezcan posteriormente
+Workspace.ChildAdded:Connect(function(obj)
+    task.defer(optimizeAnimations, obj)
+end)
+
+print("⚡ Aggressive Animation Optimizer activado")
